@@ -1,6 +1,7 @@
 import { createHashRouter } from "react-router-dom";
 import App from "../App"
 import Register from "../Register"
+import SinglePage from "../singlePage";
 
 const router= createHashRouter([
     {
@@ -10,6 +11,10 @@ const router= createHashRouter([
     {
         path:"/register",
         element: <Register/>
+    },
+    {
+        path:"/singlePage/:item/title/:name",
+        element: <SinglePage/>
     }
 ])
 

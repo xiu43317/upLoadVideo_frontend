@@ -251,12 +251,7 @@ function App() {
               <h3>{videoInfo[index].name} 
                 <button className="btn btn-success" onClick={()=>handleOpenModal(videoInfo[index])}>修改</button>
               </h3>
-              <video width="320" height="240" controls>
-                <source
-                  src={`http://localhost:3000/uploads/${item}`}
-                  type="video/mp4"
-                />
-              </video>
+              <NavLink to={`/singlePage/${item}/title/${videoInfo[index].name}`}>進入觀看</NavLink>
             </div>
           ))}
           <button type="button" onClick={logout} className="btn btn-primary d-block">
