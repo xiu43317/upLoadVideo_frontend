@@ -10,7 +10,8 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
   const canvasRef = useRef();
   const inputRef = useRef();
   const didFetch = useRef(false); // flag
-  const [danmus, setDanmus] = useState([]);
+  // const [danmus, setDanmus] = useState([]);
+  const danmusRef = useRef([]); // 存放彈幕物件，不觸發 re-render
   const [showDanmu, setShowDanmu] = useState(true);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0); // 進度（百分比）
@@ -137,7 +138,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       console.log(result.data.danmus);
       result.data.danmus.forEach((d) => {
         const newDanmu = new Danmu(d.text, parseTimeToSeconds(d.time));
-        setDanmus((prev) => [...prev, newDanmu]);
+        danmusRef.current.push(newDanmu); // ✅ 不會觸發 React render
       });
     } catch (err) {
       console.log(err);
@@ -197,7 +198,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       const currentTime = videoRef.current.currentTime;
 
       // 啟動該出現的彈幕
-      danmus.forEach((d) => {
+       danmusRef.current.forEach((d) => {
         if (!d.isActive && currentTime >= d.time) {
           d.isActive = true;
           d.init(ctx);
@@ -206,7 +207,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
 
       // ✅ 只有在影片播放時才更新位置
       if (!videoRef.current.paused) {
-        danmus.forEach((d) => {
+         danmusRef.current.forEach((d) => {
           if (d.isActive) {
             d.update(deltaTime);
           }
@@ -214,7 +215,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       }
 
       // 不論暫停或播放，都需要畫畫面（暫停時畫面就定住）
-      danmus.forEach((d) => {
+       danmusRef.current.forEach((d) => {
         if (d.isActive) {
           d.draw(ctx);
         }
@@ -228,7 +229,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
     // 監聽影片往回拉
     const handleSeek = () => {
       const currentTime = videoRef.current.currentTime;
-      danmus.forEach((d) => {
+       danmusRef.current.forEach((d) => {
         if (currentTime < d.time) {
           d.reset(); // 重置還沒到時間的彈幕
         } else {
@@ -242,7 +243,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       cancelAnimationFrame(animationId);
       // videoRef.current.removeEventListener("seeked", handleSeek);
     };
-  }, [danmus]);
+  }, []);
   // 監聽 socket 新彈幕
   useEffect(() => {
     socket.on("danmuBroadcast", (danmu) => {
@@ -251,7 +252,8 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
         danmu.text,
         videoRef.current.currentTime + 0.5
       );
-      setDanmus((prev) => [...prev, newDanmu]);
+      // setDanmus((prev) => [...prev, newDanmu]);
+      danmusRef.current.push(newDanmu); // ✅ 不會觸發 React render
     });
 
     return () => {
