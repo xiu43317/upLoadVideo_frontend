@@ -13,7 +13,7 @@ const router= createHashRouter([
         element: <Register/>
     },
     {
-        path:"/singlePage/:item/title/:name",
+        path:"/singlePage/:item/title/:name/videoId/:id",
         element: <SinglePage/>
     }
 ])

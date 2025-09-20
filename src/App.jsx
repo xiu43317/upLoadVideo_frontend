@@ -251,7 +251,7 @@ function App() {
               <h3>{videoInfo[index].name} 
                 <button className="btn btn-success" onClick={()=>handleOpenModal(videoInfo[index])}>修改</button>
               </h3>
-              <NavLink to={`/singlePage/${item.fileName}/title/${videoInfo[index].name}`}>進入觀看</NavLink>
+              <NavLink to={`/singlePage/${item.fileName}/title/${videoInfo[index].name}/videoId/${videoInfo[index]._id}`}>進入觀看</NavLink>
             </div>
           ))}
           <button type="button" onClick={logout} className="btn btn-primary d-block">

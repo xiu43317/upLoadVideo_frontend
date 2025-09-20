@@ -11,7 +11,7 @@ function SinglePage() {
   return (
     <>
       <h3>{param.name}</h3>
-      <HlsPlayer src={`http://localhost:3000/streams/${fileName}/${fileName}.m3u8`}/>
+      <HlsPlayer id={param.id} src={`http://localhost:3000/streams/${fileName}/${fileName}.m3u8`}/>
     </>
   );
 }
