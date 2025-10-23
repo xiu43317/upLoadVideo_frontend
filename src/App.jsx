@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { NavLink } from "react-router-dom";
 import { Modal } from "bootstrap";
+import ClipLoader from "react-spinners/ClipLoader"; // ← 引入 Spinner
 
 function App() {
-  const [fileInput, setFileInput] = useState({name:""});
+  const [fileInput, setFileInput] = useState({ name: "" });
   const [videos, setVideos] = useState([]);
   const [isAuth, setIsAuth] = useState(false);
   const [users, setAllusers] = useState([]);
-  const [videoInfo,setVideoInfo] = useState([])
+  const [videoInfo, setVideoInfo] = useState([]);
   const [user, setUser] = useState({
     isManger: false,
   });
@@ -17,9 +18,10 @@ function App() {
     password: "example",
   });
   const [fileName, setFileName] = useState("");
-  const [tempFileName,setTempFileName] = useState({name:""})
+  const [tempFileName, setTempFileName] = useState({ name: "" });
+  const [isScreenLoading, setIsScreenLoading] = useState(false);
   const file = useRef(null);
-  const modalRef = useRef(null)
+  const modalRef = useRef(null);
   const handleLogin = async () => {
     console.log(account);
     try {
@@ -45,16 +47,17 @@ function App() {
     const { value } = e.target;
     setFileName(value);
   };
-  const handleTempFileName = (e)=>{
-    const {value} = e.target;
+  const handleTempFileName = (e) => {
+    const { value } = e.target;
     setTempFileName({
       ...tempFileName,
-      name:value
-    })
-  }
+      name: value,
+    });
+  };
   const uploadFile = async () => {
     const formData = new FormData();
     formData.append("file", fileInput);
+    setIsScreenLoading(true)
     try {
       const res = await axios.post("http://localhost:3000/upload", formData, {
         headers: {
@@ -62,11 +65,13 @@ function App() {
         },
       });
       file.current.value = "";
-      await axios.post("http://localhost:3000/video",{
-        name:fileName,
-        fileName:fileInput.name
-      })
-      alert(res.data);
+      await axios.post("http://localhost:3000/video", {
+        name: fileName,
+        fileName: fileInput.name,
+      });
+      console.log(res);
+      setIsScreenLoading(false)
+      alert(res.data.message);
       getVideos();
     } catch (err) {
       console.log(err);
@@ -79,25 +84,25 @@ function App() {
       setVideos(res.data.filterFiles);
       setVideoInfo({
         ...res.data.videoInfo,
-        isRevise:false
+        isRevise: false,
       });
     } catch (err) {
       console.log(err);
     }
   };
-  const changeTitle = async()=>{
-    try{
-      const res = await axios.put("http://localhost:3000/video",{
-        id:tempFileName._id,
-        name:tempFileName.name
+  const changeTitle = async () => {
+    try {
+      const res = await axios.put("http://localhost:3000/video", {
+        id: tempFileName._id,
+        name: tempFileName.name,
       });
-      console.log(res)
-      handleCloseModal()
-      check()
-    }catch(err){
-      console.log(err)
+      console.log(res);
+      handleCloseModal();
+      check();
+    } catch (err) {
+      console.log(err);
     }
-  }
+  };
   const getAllUsers = async () => {
     try {
       const res = await axios.get("http://localhost:3000/all");
@@ -137,12 +142,12 @@ function App() {
   };
   const handleCloseModal = () => {
     const modalInstance = Modal.getInstance(modalRef.current);
-    setTempFileName({name:""})
+    setTempFileName({ name: "" });
     modalInstance.hide();
   };
   const handleOpenModal = (fileInfo) => {
     const modalInstance = Modal.getInstance(modalRef.current);
-    setTempFileName(fileInfo)
+    setTempFileName(fileInfo);
     modalInstance.show();
   };
   useEffect(() => {
@@ -154,12 +159,9 @@ function App() {
   useEffect(() => {
     const dotIndex = fileInput.name.lastIndexOf(".");
     if (dotIndex !== -1) {
-      const filenameWithoutExtension = fileInput.name.substring(
-        0,
-        dotIndex
-      );
+      const filenameWithoutExtension = fileInput.name.substring(0, dotIndex);
       console.log(filenameWithoutExtension); // 输出: myFile
-      setFileName(filenameWithoutExtension)
+      setFileName(filenameWithoutExtension);
     } else {
       console.log(fileInput); // 如果没有副檔名，则输出原始字符串
       // setFileName(fileInput)
@@ -248,13 +250,27 @@ function App() {
           <h2>影片列表</h2>
           {videos.map((item, index) => (
             <div key={index} className="d-flex flex-column">
-              <h3>{videoInfo[index].name} 
-                <button className="btn btn-success" onClick={()=>handleOpenModal(videoInfo[index])}>修改</button>
+              <h3>
+                {videoInfo[index].name}
+                <button
+                  className="btn btn-success"
+                  onClick={() => handleOpenModal(videoInfo[index])}
+                >
+                  修改
+                </button>
               </h3>
-              <NavLink to={`/singlePage/${item.fileName}/title/${videoInfo[index].name}/videoId/${videoInfo[index]._id}`}>進入觀看</NavLink>
+              <NavLink
+                to={`/singlePage/${item.fileName}/title/${videoInfo[index].name}/videoId/${videoInfo[index]._id}`}
+              >
+                進入觀看
+              </NavLink>
             </div>
           ))}
-          <button type="button" onClick={logout} className="btn btn-primary d-block">
+          <button
+            type="button"
+            onClick={logout}
+            className="btn btn-primary d-block"
+          >
             登出
           </button>
         </div>
@@ -264,18 +280,57 @@ function App() {
           <div className="modal-content">
             <div className="modal-header">
               <h5 className="modal-title">修改標題</h5>
-              <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close" onClick={handleCloseModal}></button>
+              <button
+                type="button"
+                className="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+                onClick={handleCloseModal}
+              ></button>
             </div>
             <div className="modal-body">
-              <input type="text" className="w-100" value={tempFileName.name} onChange={handleTempFileName}/>
+              <input
+                type="text"
+                className="w-100"
+                value={tempFileName.name}
+                onChange={handleTempFileName}
+              />
             </div>
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal" onClick={handleCloseModal}>關閉</button>
-              <button type="button" className="btn btn-primary" onClick={changeTitle}>確認修改</button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                data-bs-dismiss="modal"
+                onClick={handleCloseModal}
+              >
+                關閉
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={changeTitle}
+              >
+                確認修改
+              </button>
             </div>
           </div>
         </div>
       </div>
+      {isScreenLoading && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.6)", // 黑背景 + 透明度
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999, // 最高層
+          }}
+        >
+          <ClipLoader color="#ffffff" size={80} />
+        </div>
+      )}
     </>
   );
 }

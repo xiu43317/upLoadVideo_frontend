@@ -2,13 +2,19 @@ import React, { useEffect, useRef, useState } from "react";
 import Hls from "hls.js";
 import io from "socket.io-client";
 import axios from "axios";
+import TimelineCard from "./TimelineCard"; // ✅ 引入卡片元件
 
 const socket = io("http://localhost:3000"); // 連線到後端
 
-const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
+const HlsPlayer = ({ id, src, strDir, autoPlay = false, controls = false }) => {
   const videoRef = useRef();
   const canvasRef = useRef();
   const inputRef = useRef();
+
+  // 🟡 新增這些 state
+  const [notes, setNotes] = useState([]); // 所有時間提示
+  const [activeCard, setActiveCard] = useState(null); // 目前顯示的卡片
+  const [noteInput, setNoteInput] = useState("");
   const didFetch = useRef(false); // flag
   // const [danmus, setDanmus] = useState([]);
   const danmusRef = useRef([]); // 存放彈幕物件，不觸發 re-render
@@ -18,7 +24,53 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [subtitleUrl, setSubtitleUrl] = useState(null);
+  const [showSubtitle, setShowSubtitle] = useState(true);
 
+  // 🟡 儲存卡片資訊（實務上這裡可以改成 axios POST 存到 MongoDB）
+  const handleSaveNote = async () => {
+    if (noteInput.trim() === "") return;
+    await handleSendCard();
+
+    // 偵測所有 URL
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const urls = noteInput.match(urlRegex) || [];
+    // 將 URL 從文字中去掉，留下純文字內容
+    let content = noteInput;
+    urls.forEach((u) => {
+      content = content.replace(u, "");
+    });
+
+    const newNote = {
+      time: videoRef.current.currentTime,
+      content,
+      links: urls,
+    };
+
+    setNotes((prev) => [...prev, newNote]);
+    setNoteInput("");
+  };
+  // 儲存卡片
+  const handleSendCard = async () => {
+    const text = noteInput;
+    if (!text) return;
+    const newNote = {
+      time: videoRef.current.currentTime,
+      content: text,
+    };
+    try {
+      const result = await axios.post(
+        "http://localhost:3000/addCard",
+        { videoId: id, cardData: newNote },
+        {
+          withCredentials: true,
+        }
+      );
+      console.log(result);
+    } catch (err) {
+      console.log(err);
+    }
+  };
   // 彈幕物件
   class Danmu {
     constructor(text, time, color = "white", fontSize = 24, speed = 2) {
@@ -60,7 +112,6 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       };
     }
   }
-
   // 快轉5秒
   const handleForward = () => {
     videoRef.current.currentTime += 5;
@@ -80,13 +131,24 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       setIsPlaying(!isPlaying);
     }
   };
-  // 更新時間與進度
+  // 🟡 當時間更新時，也檢查是否要顯示卡片
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       const current = videoRef.current.currentTime;
       const total = videoRef.current.duration;
       setCurrentTime(current);
       setProgress((current / total) * 100);
+      // 找出當前時間應該顯示的卡片
+      const found = notes.find(
+        (n) => Math.abs(n.time - current) < 0.5 // 誤差 0.5 秒
+      );
+
+      // 如果找到了而且目前沒有顯示卡片，才觸發顯示
+      if (found && (!activeCard || activeCard !== found)) {
+        setActiveCard(found);
+        // 三秒後自動關閉
+        setTimeout(() => setActiveCard(null), 3000);
+      }
     }
   };
   // 記錄總時長
@@ -126,6 +188,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
     const [mins, secs] = timeStr.split(":").map(Number);
     return mins * 60 + secs;
   };
+  //抓取歷史彈幕
   const getDanmus = async () => {
     try {
       const result = await axios.post(
@@ -159,8 +222,108 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
     socket.emit("newDanmu", newDanmu);
     inputRef.current.value = "";
   };
+  //向後端發起得到卡片資訊
+const getCards = async () => {
+  try {
+    const result = await axios.post(
+      "http://localhost:3000/findCards",
+      { videoId: id },
+      { withCredentials: true }
+    );
+
+    const processedNotes = result.data.cards.map((data) => {
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urls = data.content.match(urlRegex) || [];
+
+      // 移除文字中的 URL
+      let content = data.content;
+      urls.forEach((u) => {
+        content = content.replace(u, "");
+      });
+
+      return {
+        time: data.time,
+        content: content.trim(),
+        links: urls,
+      };
+    });
+
+    // 一次性設定 notes
+    setNotes(processedNotes);
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+  // 抓取歷史卡片資訊
+  useEffect(() => {
+    getCards();
+  }, [id]);
+  // 抓取字幕
+  useEffect(() => {
+    console.log(strDir);
+    const loadSubtitles = async () => {
+      try {
+        const response = await axios.get(
+          strDir,
+          { responseType: "text" } // 👈 回傳純文字格式
+        );
+
+        const blob = new Blob([response.data], { type: "text/vtt" });
+        const blobUrl = URL.createObjectURL(blob);
+        setSubtitleUrl(blobUrl);
+      } catch (error) {
+        console.error("❌ 字幕載入失敗:", error);
+      }
+    };
+
+    loadSubtitles();
+  }, [strDir]);
+  // 建立track載入字幕
   useEffect(() => {
     const video = videoRef.current;
+    if (!video || !subtitleUrl) return;
+
+    // 清除舊的 track，避免重複
+    Array.from(video.querySelectorAll("track")).forEach((track) =>
+      track.remove()
+    );
+
+    // 建立新的 track
+    const track = document.createElement("track");
+    track.kind = "subtitles";
+    track.label = "繁體中文";
+    track.srclang = "zh-TW";
+    track.src = subtitleUrl;
+    track.default = true;
+    video.appendChild(track);
+    // 當字幕載入完成後顯示
+    setTimeout(() => {
+      if (video.textTracks && video.textTracks[0]) {
+        video.textTracks[0].mode = "showing";
+        console.log("✅ 字幕載入成功，已顯示");
+      }
+    }, 500);
+  }, [subtitleUrl]);
+  // 開啟字幕偵測
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // 取得 track 元素
+    const track = video.textTracks[0];
+    if (!track) return;
+
+    // 依照 checkbox 切換字幕顯示
+    if (showSubtitle) {
+      track.mode = "showing"; // 顯示字幕
+    } else {
+      track.mode = "hidden"; // 隱藏字幕（不移除）
+    }
+  }, [showSubtitle]);
+  useEffect(() => {
+    const video = videoRef.current;
+    console.log(strDir);
 
     if (Hls.isSupported()) {
       const hls = new Hls({
@@ -172,8 +335,15 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED, function () {
         if (autoPlay) video.play();
+        // const track = document.createElement("track");
+        // track.kind = "subtitles";
+        // track.src = strDir;
+        // track.srclang = "zh-TW";
+        // track.label = "繁體中文";
+        // track.default = true;
+        // video.appendChild(track);
+        // video.textTracks[0].mode = "showing"; // ✅ 強制開啟字幕
       });
-
       return () => {
         hls.destroy();
       };
@@ -181,7 +351,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       // Safari 原生支援 HLS
       video.src = src;
     }
-  }, [src, autoPlay]);
+  }, [src, autoPlay, strDir]);
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -198,7 +368,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       const currentTime = videoRef.current.currentTime;
 
       // 啟動該出現的彈幕
-       danmusRef.current.forEach((d) => {
+      danmusRef.current.forEach((d) => {
         if (!d.isActive && currentTime >= d.time) {
           d.isActive = true;
           d.init(ctx);
@@ -207,7 +377,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
 
       // ✅ 只有在影片播放時才更新位置
       if (!videoRef.current.paused) {
-         danmusRef.current.forEach((d) => {
+        danmusRef.current.forEach((d) => {
           if (d.isActive) {
             d.update(deltaTime);
           }
@@ -215,7 +385,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       }
 
       // 不論暫停或播放，都需要畫畫面（暫停時畫面就定住）
-       danmusRef.current.forEach((d) => {
+      danmusRef.current.forEach((d) => {
         if (d.isActive) {
           d.draw(ctx);
         }
@@ -229,7 +399,7 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
     // 監聽影片往回拉
     const handleSeek = () => {
       const currentTime = videoRef.current.currentTime;
-       danmusRef.current.forEach((d) => {
+      danmusRef.current.forEach((d) => {
         if (currentTime < d.time) {
           d.reset(); // 重置還沒到時間的彈幕
         } else {
@@ -260,11 +430,11 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
       socket.off("danmuBroadcast");
     };
   }, []);
-  useEffect(()=>{
-    if(didFetch.current) return
+  useEffect(() => {
+    if (didFetch.current) return;
     didFetch.current = true;
-    getDanmus()
-  },[])
+    getDanmus();
+  }, []);
   return (
     <>
       <video
@@ -288,6 +458,16 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
           // backgroundColor: "red"
         }}
       />
+      {/* 🟡 這裡插入卡片元件 */}
+      {activeCard && (
+        <TimelineCard
+          time={activeCard.time}
+          content={activeCard.content}
+          links={activeCard.links || []} // 多連結陣列
+          onClose={() => setActiveCard(null)}
+        />
+      )}
+
       {/* 控制列 */}
       <div
         style={{
@@ -344,6 +524,26 @@ const HlsPlayer = ({ id, src, autoPlay = false, controls = false }) => {
           />
           顯示彈幕
         </label>
+      </div>
+      <div className="mt-2">
+        <label>
+          <input
+            type="checkbox"
+            checked={showSubtitle}
+            onChange={(e) => setShowSubtitle(e.target.checked)}
+          />
+          顯示字幕
+        </label>
+      </div>
+      {/* 🟡 新增提示輸入框 */}
+      <div style={{ marginTop: "10px" }}>
+        <textarea
+          placeholder="輸入提示訊息，可附帶多個連結"
+          value={noteInput}
+          onChange={(e) => setNoteInput(e.target.value)}
+          style={{ width: "100%", height: "60px", marginBottom: "4px" }}
+        />
+        <button onClick={handleSaveNote}>儲存提示</button>
       </div>
     </>
   );
