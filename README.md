@@ -21,9 +21,9 @@ React + Vite / CRA（依你的專案）
 
 Axios / fetch
 
-React-loading / React-spinners（依你的版本）
+React-spinner
 
-Tailwind / CSS Modules / SCSS（依你的專案）
+CSS Modules / SCSS（依你的專案）
 
 📦 安裝與啟動
 ```
