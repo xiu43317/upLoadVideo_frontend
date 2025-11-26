@@ -17,13 +17,13 @@
 
 🛠️ 使用技術
 
-React + Vite / CRA（依你的專案）
+React + Vite / CRA
 
 Axios / fetch
 
 React-spinner
 
-CSS Modules / SCSS（依你的專案）
+CSS Modules / SCSS
 
 📦 安裝與啟動
 ```
