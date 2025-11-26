@@ -35,3 +35,14 @@ npm run dev
 
 後端程式碼請參考：
 <https://github.com/xiu43317/upLoadVideo_backend>
+
+📝 專案架構（範例）
+```
+src/
+ ├── components/
+ ├── pages/
+ ├── hooks/
+ ├── utils/
+ ├── App.jsx
+ └── main.jsx
+```
