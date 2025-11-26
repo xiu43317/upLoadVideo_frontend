@@ -1,12 +1,26 @@
-# React + Vite
+這是一個 React 建置的前端專案，主要功能是讓使用者上傳影片，並搭配後端 API 顯示轉檔結果、字幕處理狀態與影片資訊。
+介面設計簡單直覺，並支援上傳時的載入動畫、進度顯示與錯誤提示。
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+功能特點
 
-Currently, two official plugins are available:
+上傳影片（MP4 / MOV / 等常見格式）
+上傳時顯示 Loading / Spinner
+呼叫後端 API 取得處理結果
+顯示字幕、自動轉檔資訊
+支援跨來源請求（CORS）
+使用 React Hooks 寫法，易於維護
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+使用技術
+React + Vite / CRA（依你的專案）
+Axios / fetch
+React-loading / React-spinners（依你的版本）
+Tailwind / CSS Modules / SCSS（依你的專案）
 
-## Expanding the ESLint configuration
+安裝與啟動
+npm install
+npm run dev
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+🔗 後端專案
+
+後端程式碼請參考：
+<https://github.com/xiu43317/upLoadVideo_backend>
