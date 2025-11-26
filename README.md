@@ -26,8 +26,10 @@ React-loading / React-spinners（依你的版本）
 Tailwind / CSS Modules / SCSS（依你的專案）
 
 📦 安裝與啟動
+```
 npm install
 npm run dev
+```
 
 🔗 後端專案
 
